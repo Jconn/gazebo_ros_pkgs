@@ -55,6 +55,16 @@ public:
   /// Odometry publisher
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_{nullptr};
 
+  /// Keep latest odometry message
+  nav_msgs::msg::Odometry odom_;
+
+  /// Publish odometry transforms
+  /// \param[in] _current_time Current simulation time
+  void PublishOdometryTf(const gazebo::common::Time & _current_time);
+
+  /// To broadcast TFs
+  std::shared_ptr<tf2_ros::TransformBroadcaster> transform_broadcaster_;
+
   /// Odom topic name
   std::string topic_name_{"odom"};
 
@@ -162,9 +172,23 @@ void GazeboRosP3D::Load(gazebo::physics::ModelPtr model, sdf::ElementPtr sdf)
     }
   }
 
+  impl_->transform_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(impl_->ros_node_);
   // Listen to the update event. This event is broadcast every simulation iteration
   impl_->update_connection_ = gazebo::event::Events::ConnectWorldUpdateBegin(
     std::bind(&GazeboRosP3DPrivate::OnUpdate, impl_.get(), std::placeholders::_1));
+}
+
+void GazeboRosP3DPrivate::PublishOdometryTf(const gazebo::common::Time & _current_time)
+{
+  geometry_msgs::msg::TransformStamped msg;
+  msg.header.stamp = gazebo_ros::Convert<builtin_interfaces::msg::Time>(_current_time);
+  msg.header.frame_id = "odom";
+  msg.child_frame_id = link_->GetName();
+  msg.transform.translation =
+    gazebo_ros::Convert<geometry_msgs::msg::Vector3>(odom_.pose.pose.position);
+  msg.transform.rotation = odom_.pose.pose.orientation;
+
+  transform_broadcaster_->sendTransform(msg);
 }
 
 // Update the controller
@@ -199,12 +223,11 @@ void GazeboRosP3DPrivate::OnUpdate(const gazebo::common::UpdateInfo & info)
     return;
   }
 
-  nav_msgs::msg::Odometry pose_msg;
 
   // Copy data into pose message
-  pose_msg.header.frame_id = frame_name_;
-  pose_msg.header.stamp = gazebo_ros::Convert<builtin_interfaces::msg::Time>(current_time);
-  pose_msg.child_frame_id = link_->GetName();
+  odom_.header.frame_id = frame_name_;
+  odom_.header.stamp = gazebo_ros::Convert<builtin_interfaces::msg::Time>(current_time);
+  odom_.child_frame_id = link_->GetName();
 
   // Get inertial rates
   ignition::math::Vector3d vpos = link_->WorldLinearVel();
@@ -237,34 +260,38 @@ void GazeboRosP3DPrivate::OnUpdate(const gazebo::common::UpdateInfo & info)
   pose.Rot().Normalize();
 
   // Fill out messages
-  pose_msg.pose.pose.position = gazebo_ros::Convert<geometry_msgs::msg::Point>(pose.Pos());
-  pose_msg.pose.pose.orientation = gazebo_ros::Convert<geometry_msgs::msg::Quaternion>(pose.Rot());
+  odom_.pose.pose.position = gazebo_ros::Convert<geometry_msgs::msg::Point>(pose.Pos());
+  odom_.pose.pose.orientation = gazebo_ros::Convert<geometry_msgs::msg::Quaternion>(pose.Rot());
 
-  pose_msg.twist.twist.linear.x = vpos.X() + ignition::math::Rand::DblNormal(0, gaussian_noise_);
-  pose_msg.twist.twist.linear.y = vpos.Y() + ignition::math::Rand::DblNormal(0, gaussian_noise_);
-  pose_msg.twist.twist.linear.z = vpos.Z() + ignition::math::Rand::DblNormal(0, gaussian_noise_);
-  pose_msg.twist.twist.angular.x = veul.X() + ignition::math::Rand::DblNormal(0, gaussian_noise_);
-  pose_msg.twist.twist.angular.y = veul.Y() + ignition::math::Rand::DblNormal(0, gaussian_noise_);
-  pose_msg.twist.twist.angular.z = veul.Z() + ignition::math::Rand::DblNormal(0, gaussian_noise_);
+  /*
+  odom_.twist.twist.linear.x = vpos.X() + ignition::math::Rand::DblNormal(0, gaussian_noise_);
+  odom_.twist.twist.linear.y = vpos.Y() + ignition::math::Rand::DblNormal(0, gaussian_noise_);
+  odom_.twist.twist.linear.z = vpos.Z() + ignition::math::Rand::DblNormal(0, gaussian_noise_);
+  odom_.twist.twist.angular.x = veul.X() + ignition::math::Rand::DblNormal(0, gaussian_noise_);
+  odom_.twist.twist.angular.y = veul.Y() + ignition::math::Rand::DblNormal(0, gaussian_noise_);
+  odom_.twist.twist.angular.z = veul.Z() + ignition::math::Rand::DblNormal(0, gaussian_noise_);
+  */
 
   // Fill in covariance matrix
   /// @TODO: let user set separate linear and angular covariance values
   double gn2 = gaussian_noise_ * gaussian_noise_;
-  pose_msg.pose.covariance[0] = gn2;
-  pose_msg.pose.covariance[7] = gn2;
-  pose_msg.pose.covariance[14] = gn2;
-  pose_msg.pose.covariance[21] = gn2;
-  pose_msg.pose.covariance[28] = gn2;
-  pose_msg.pose.covariance[35] = gn2;
-  pose_msg.twist.covariance[0] = gn2;
-  pose_msg.twist.covariance[7] = gn2;
-  pose_msg.twist.covariance[14] = gn2;
-  pose_msg.twist.covariance[21] = gn2;
-  pose_msg.twist.covariance[28] = gn2;
-  pose_msg.twist.covariance[35] = gn2;
+  odom_.pose.covariance[0] = gn2;
+  odom_.pose.covariance[7] = gn2;
+  odom_.pose.covariance[14] = gn2;
+  odom_.pose.covariance[21] = gn2;
+  odom_.pose.covariance[28] = gn2;
+  odom_.pose.covariance[35] = gn2;
+  odom_.twist.covariance[0] = gn2;
+  odom_.twist.covariance[7] = gn2;
+  odom_.twist.covariance[14] = gn2;
+  odom_.twist.covariance[21] = gn2;
+  odom_.twist.covariance[28] = gn2;
+  odom_.twist.covariance[35] = gn2;
+
 
   // Publish to ROS
-  pub_->publish(pose_msg);
+  pub_->publish(odom_);
+  //PublishOdometryTf(current_time);
 
   // Save last time stamp
   last_time_ = current_time;
