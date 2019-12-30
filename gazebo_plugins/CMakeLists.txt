@@ -178,6 +178,18 @@ target_link_libraries(gazebo_ros_imu_sensor
 ament_export_libraries(gazebo_ros_imu_sensor)
 
 
+# gazebo_ros_magnetic_sensor
+add_library(gazebo_ros_magnetic_sensor SHARED
+  src/gazebo_ros_magnetic_sensor.cpp
+)
+ament_target_dependencies(gazebo_ros_magnetic_sensor
+  "gazebo_ros"
+  "sensor_msgs"
+  "gazebo_dev"
+)
+ament_export_libraries(gazebo_ros_magnetic_sensor)
+
+
 # gazebo_ros_gps_sensor
 add_library(gazebo_ros_gps_sensor SHARED
   src/gazebo_ros_gps_sensor.cpp
@@ -419,6 +431,7 @@ install(TARGETS
     gazebo_ros_tricycle_drive
     gazebo_ros_vacuum_gripper
     gazebo_ros_video
+    gazebo_ros_magnetic_sensor
     multi_camera_plugin
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
