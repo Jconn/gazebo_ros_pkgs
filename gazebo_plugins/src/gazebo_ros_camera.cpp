@@ -225,14 +225,14 @@ void GazeboRosCamera::Load(gazebo::sensors::SensorPtr _sensor, sdf::ElementPtr _
     // Depth info publisher
     impl_->depth_camera_info_pub_ =
       impl_->ros_node_->create_publisher<sensor_msgs::msg::CameraInfo>(
-      impl_->camera_name_ + "/depth/camera_info", rclcpp::QoS(rclcpp::KeepLast(1)));
+      impl_->camera_name_ + "/depth/camera_info", rclcpp::SensorDataQoS() );
 
     RCLCPP_INFO(impl_->ros_node_->get_logger(), "Publishing depth camera info to [%s]",
       impl_->depth_camera_info_pub_->get_topic_name());
 
     // Point cloud publisher
     impl_->point_cloud_pub_ = impl_->ros_node_->create_publisher<sensor_msgs::msg::PointCloud2>(
-      impl_->camera_name_ + "/points", rclcpp::QoS(rclcpp::KeepLast(1)));
+      impl_->camera_name_ + "/points", rclcpp::SensorDataQoS() );
 
     RCLCPP_INFO(impl_->ros_node_->get_logger(), "Publishing pointcloud to [%s]",
       impl_->point_cloud_pub_->get_topic_name());
