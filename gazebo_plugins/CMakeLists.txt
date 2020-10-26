@@ -38,6 +38,7 @@ find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(trajectory_msgs REQUIRED)
+find_package(odrive_msgs REQUIRED)
 
 link_directories(${gazebo_dev_LIBRARY_DIRS})
 
@@ -353,6 +354,7 @@ ament_target_dependencies(gazebo_ros_ackermann_drive
   "tf2"
   "tf2_geometry_msgs"
   "tf2_ros"
+  "odrive_msgs"
 )
 ament_export_libraries(gazebo_ros_ackermann_drive)
 if(ENABLE_PROFILER)
